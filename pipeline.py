@@ -1,5 +1,5 @@
 """
-SpatialTTO / SpatialMAS Pipeline.
+SpatiO Pipeline.
 
 Flow: Head infers category -> select agents -> run specialists -> Final Reasoning -> update trust (train).
 
@@ -132,7 +132,7 @@ def run_step(
     use_beta_weights: bool = True,
 ) -> Dict:
     """
-    Execute one step of the SpatialTTO pipeline.
+    Execute one step of the SpatiO pipeline.
 
     specialist_generate(llm_name, image, prompt) -> str
     reasoning_generate(prompt, image=None) -> str

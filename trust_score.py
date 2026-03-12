@@ -1,5 +1,5 @@
 """
-SpatialTTO Trust Score module.
+SpatiO Trust Score module.
 
 Roles:
   - direct_visual_heuristic: Pictorial cues (occlusion, size, height)

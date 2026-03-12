@@ -1,5 +1,5 @@
 """
-SpatialTTO / SpatiO prompts.
+SpatiO prompts.
 
 - Head Agent: classify query into one of 5 unified spatial categories
 - Role 1: Direct Visual Heuristic Strategy Agent

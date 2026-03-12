@@ -1,6 +1,6 @@
-# SpatialTTO (SpatiO) — Supplementary Materials
+# SpatiO: Adaptive Test-Time Orchestration of Vision-Language Agents for Spatial Reasoning
 
-This package provides the implementation of **SpatialTTO** (Test-Time Orchestration) and **SpatialMAS** (Multi-Agent System) for spatial reasoning benchmarks.
+Supplementary materials for **SpatiO** — adaptive test-time orchestration and multi-agent system for spatial reasoning benchmarks.
 
 ## Architecture
 
@@ -23,7 +23,7 @@ This package provides the implementation of **SpatialTTO** (Test-Time Orchestrat
 ## Structure
 
 ```
-SpatialTTO_Supplement/
+SpatiO/
 ├── README.md
 ├── config.py          # Hyperparameters and categories
 ├── core/               # Model runners (load from your implementation)

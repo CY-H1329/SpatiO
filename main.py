@@ -1,5 +1,5 @@
 """
-SpatialTTO / SpatialMAS — Entry point for supplement.
+SpatiO — Entry point for supplement.
 
 Usage:
   python main.py --benchmark cvbench --max_samples 100
@@ -71,7 +71,7 @@ def _make_reasoning_generate(runners, device_map):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="SpatialTTO / SpatialMAS Supplement")
+    parser = argparse.ArgumentParser(description="SpatiO: Adaptive Test-Time Orchestration of Vision-Language Agents for Spatial Reasoning")
     parser.add_argument("--benchmark", type=str, default="cvbench", choices=["cvbench", "3dsrbench"])
     parser.add_argument("--max_samples", type=int, default=10)
     parser.add_argument("--device_map", type=str, default=None,

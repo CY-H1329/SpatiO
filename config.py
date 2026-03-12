@@ -1,5 +1,5 @@
 """
-SpatialTTO / SpatialMAS configuration.
+SpatiO configuration.
 
 Hyperparameters (paper defaults):
   k (kappa) = 0.5, mu = 0.3, gamma = 0.3,
