@@ -114,3 +114,5 @@ python main.py --benchmark 3dsrbench --max_samples 50 --train
 
 - PyTorch, Transformers
 - PIL, datasets (HuggingFace), requests
+
+**Note:** Sa2VA and SpatialRGPT specialists require specific versions from their official repositories. See [REPRODUCTION.md](REPRODUCTION.md) for details.

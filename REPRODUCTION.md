@@ -45,3 +45,6 @@ Known issues in the supplementary code and fixes for reproduction.
 1. **models package**: Implement `models/` with wrappers for each VLM, or set `MODEL_ROOT` env to the path containing VLM implementations
 2. **model_id mapping**: In model wrappers, map `qwen3_4b` → `Qwen/Qwen3-VL-4B-Instruct`
 3. **device_map**: Use `cuda:N` format (e.g. `--device_map 0,1,2,3` or `--device_map cuda:0,cuda:1`)
+4. **Sa2VA & SpatialRGPT**: These specialists require specific versions from their official repositories. Install from:
+   - Sa2VA: https://github.com/magic-research/Sa2VA
+   - SpatialRGPT: https://github.com/AnjieCheng/SpatialRGPT
