@@ -1,11 +1,3 @@
-"""
-SpatiO Pipeline.
-
-Flow: Head infers category -> select agents -> run specialists -> Final Reasoning -> update trust (train).
-
-Models loaded from core/runners. Use device='cuda:0', 'cuda:1', etc. for different GPU cores.
-"""
-
 import logging
 import re
 import time
@@ -51,7 +43,6 @@ def _infer_answer_type(query: str) -> str:
 
 
 def parse_category(raw: str, valid_categories: List[str]) -> str:
-    """Best-effort match of Head Agent output to a valid category."""
     raw_clean = (raw or "").strip().lower()
     for cat in valid_categories:
         if cat.lower() == raw_clean:
@@ -63,7 +54,6 @@ def parse_category(raw: str, valid_categories: List[str]) -> str:
 
 
 def parse_specialist_output(raw: str, answer_type: str = "multiple_choice") -> Tuple[str, str]:
-    """Extract (answer, reason) from specialist output."""
     raw = (raw or "").strip()
     answer = ""
     reason = ""
@@ -92,7 +82,6 @@ def parse_specialist_output(raw: str, answer_type: str = "multiple_choice") -> T
 
 
 def parse_final_answer(raw: str, answer_type: str = "multiple_choice") -> str:
-    """Extract the final answer from Reasoning Agent output."""
     raw = (raw or "").strip()
     if answer_type == "free_form":
         m = re.search(r"Answer\s*:\s*(.+?)(?=\n|Reason\s*:|\Z)", raw, re.IGNORECASE | re.DOTALL)

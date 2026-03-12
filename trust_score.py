@@ -1,20 +1,3 @@
-"""
-SpatiO Trust Score module.
-
-Roles:
-  - direct_visual_heuristic: Pictorial cues (occlusion, size, height)
-  - explicit_3d_representation: 3D depth (z values, in front/behind)
-  - scene_graph_construction: 2D spatial relations (above/below, left/right)
-
-Functions:
-  - select_agents_by_score(): assign agents to roles by score
-  - step1_compute_rewards(): reward per agent vs GT
-  - step2_scale_rewards(): scale by phi(N_c) = 1 - exp(-N_c/T)
-  - step3_update_scores_simple(): simple score accumulation
-  - step4_update_credibility_full(): Beta+EMA trust update
-  - compute_role_weights(): w_i = exp(beta*s_i) / sum(exp(beta*s_j)) for final reasoning
-"""
-
 import copy
 import math
 import re
@@ -24,19 +7,11 @@ from typing import Callable, Dict, List, Optional
 from config import ROLES, KAPPA, MU, GAMMA, LAMBDA_F, LAMBDA_G, RAMP_TEMP, BETA
 
 
-# ---------------------------------------------------------------------------
-# Agent selection by score
-# ---------------------------------------------------------------------------
-
 def select_agents_by_score(
     scores: Dict[str, Dict[str, Dict[str, float]]],
     category: str,
     candidate_agents: List[str],
 ) -> Dict[str, str]:
-    """
-    Assign one agent per role with highest score.
-    Returns: {role: agent}
-    """
     roles = list(ROLES)
     agents = list(candidate_agents)
     if len(agents) < len(roles):
@@ -65,19 +40,13 @@ def select_agents_by_score(
     return assignment
 
 
-# ---------------------------------------------------------------------------
-# Answer comparison
-# ---------------------------------------------------------------------------
-
 def _normalize_for_comparison(s: str) -> str:
-    """Normalize for comparison: lowercase, collapse whitespace."""
     if not s:
         return ""
     return " ".join((s or "").strip().lower().split())
 
 
 def _extract_answer(text: str) -> str:
-    """Extract answer from text: (A), Answer: X, etc."""
     text = (text or "").strip()
     if not text:
         return ""
@@ -95,7 +64,6 @@ def _extract_answer(text: str) -> str:
 def similarity_answer(
     pred: str, gt: str, normalize_fn: Optional[Callable[[str], str]] = None
 ) -> float:
-    """1.0 if match, 0.0 if mismatch, 0.5 if GT missing."""
     if normalize_fn is not None:
         p, g = normalize_fn(pred), normalize_fn(gt)
     else:
@@ -110,10 +78,6 @@ def similarity_answer(
     return 1.0 if p == g else 0.0
 
 
-# ---------------------------------------------------------------------------
-# Step 1: Compute rewards
-# ---------------------------------------------------------------------------
-
 def step1_compute_rewards(
     agent_answers: Dict[str, str],
     final_answer: str,
@@ -121,10 +85,6 @@ def step1_compute_rewards(
     kappa: float = KAPPA,
     similarity_fn: Optional[Callable[[str, str], float]] = None,
 ) -> Dict[str, float]:
-    """
-    Reward per agent vs GT. Correct -> near +1, wrong -> near -1.
-    When final answer is wrong, penalize wrong agents more (kappa).
-    """
     sim_fn = similarity_fn or similarity_answer
     final_correct = sim_fn(final_answer, gt_answer) >= 0.99
     sim_final = sim_fn(final_answer, gt_answer)
@@ -140,12 +100,7 @@ def step1_compute_rewards(
     return rewards
 
 
-# ---------------------------------------------------------------------------
-# Step 2: Scale rewards by phi(N_c)
-# ---------------------------------------------------------------------------
-
 def step2_phi_scale(N_c: int, T: float = RAMP_TEMP) -> float:
-    """phi(N_c) = 1 - exp(-N_c/T). Higher N_c -> stronger update."""
     return 1.0 if T <= 0 else 1.0 - math.exp(-N_c / T)
 
 
@@ -154,14 +109,9 @@ def step2_scale_rewards(
     N_c: int,
     T: float = RAMP_TEMP,
 ) -> Dict[str, float]:
-    """Scale rewards by phi(N_c)."""
     phi = step2_phi_scale(N_c, T)
     return {agent_id: phi * R_i for agent_id, R_i in rewards.items()}
 
-
-# ---------------------------------------------------------------------------
-# Step 3: Simple score update
-# ---------------------------------------------------------------------------
 
 def step3_update_scores_simple(
     scores: Dict[str, Dict[str, Dict[str, float]]],
@@ -170,7 +120,6 @@ def step3_update_scores_simple(
     agent_roles: Dict[str, str],
     gamma: float = GAMMA,
 ) -> Dict[str, Dict[str, Dict[str, float]]]:
-    """s_new = s_old + gamma * R_tilde."""
     out = copy.deepcopy(scores)
     for agent_id, R_tilde in scaled_rewards.items():
         role = agent_roles.get(agent_id, ROLES[0])
@@ -185,13 +134,8 @@ def step3_update_scores_simple(
     return out
 
 
-# ---------------------------------------------------------------------------
-# Step 4: Beta + EMA trust update
-# ---------------------------------------------------------------------------
-
 @dataclass
 class TrustState:
-    """Trust state for (agent, role, category)."""
     n_plus: float = 0.5
     n_minus: float = 0.5
     f: float = 0.5
@@ -200,7 +144,6 @@ class TrustState:
 
 
 def _reward_to_01(R_tilde: float) -> float:
-    """Map reward [-1,1] -> [0,1] for Beta."""
     return max(0.0, min(1.0, (R_tilde + 1.0) / 2.0))
 
 
@@ -214,7 +157,6 @@ def step4_update_credibility_full(
     mu: float = MU,
     gamma: float = GAMMA,
 ) -> Dict[str, Dict[str, Dict[str, TrustState]]]:
-    """Beta + EMA trust update. s = mu*f + (1-mu)*g + gamma*R."""
     out = copy.deepcopy(state)
     for agent_id, R_tilde in scaled_rewards.items():
         role = agent_roles.get(agent_id, ROLES[0])
@@ -242,16 +184,11 @@ def step4_update_credibility_full(
 def get_scores_from_state(
     state: Dict[str, Dict[str, Dict[str, TrustState]]],
 ) -> Dict[str, Dict[str, Dict[str, float]]]:
-    """Extract s from TrustState for select_agents_by_score."""
     return {
         agent: {cat: {role: t.s for role, t in roles.items()} for cat, roles in cats.items()}
         for agent, cats in state.items()
     }
 
-
-# ---------------------------------------------------------------------------
-# Beta weights for final reasoning: w_i = exp(beta*s_i) / sum(exp(beta*s_j))
-# ---------------------------------------------------------------------------
 
 def compute_role_weights(
     scores: Dict[str, Dict[str, Dict[str, float]]],
@@ -260,10 +197,6 @@ def compute_role_weights(
     agents: List[str],
     beta: float = BETA,
 ) -> Dict[str, float]:
-    """
-    Compute role-specific weights for final reasoning.
-    w_i,k,c = exp(beta * s_i,k,c) / sum_j exp(beta * s_j,k,c)
-    """
     if not agents:
         return {}
     s_list = [
@@ -284,11 +217,6 @@ def compute_weights_for_entries(
     category: str,
     beta: float = BETA,
 ) -> Dict[str, float]:
-    """
-    Compute weight for each (role, llm_name) in entries.
-    entries: [{"role", "llm_name", "answer", "reason"}, ...]
-    Returns: {(role, llm_name): weight}
-    """
     role_to_agents: Dict[str, List[str]] = {}
     for e in entries:
         r, a = e["role"], e["llm_name"]
@@ -304,10 +232,6 @@ def compute_weights_for_entries(
             weights[(role, agent)] = val
     return weights
 
-
-# ---------------------------------------------------------------------------
-# Convenience: run_step4
-# ---------------------------------------------------------------------------
 
 def run_step4(
     state: Dict[str, Dict[str, Dict[str, TrustState]]],
@@ -325,7 +249,6 @@ def run_step4(
     lambda_g: float = LAMBDA_G,
     mu: float = MU,
 ) -> Dict[str, Dict[str, Dict[str, TrustState]]]:
-    """Full TTO update: reward -> scale -> Beta+EMA. Updates scores in-place."""
     rewards = step1_compute_rewards(agent_answers, final_answer, gt_answer, kappa=kappa)
     scaled = step2_scale_rewards(rewards, N_c, T=T)
     updated_state = step4_update_credibility_full(

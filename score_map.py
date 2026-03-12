@@ -1,11 +1,3 @@
-"""
-ScoreMap: per-category score maps (LLM x Role).
-
-Each category has a |ROLES| x |LLMS| matrix of scores.
-Step 0 -> random agent selection per role.
-Step > 0 -> argmax selection per role (select_agents_by_score).
-"""
-
 import copy
 import json
 import random
@@ -16,8 +8,6 @@ from config import SPECIALIST_LLMS, ROLES, INITIAL_SCORE
 
 
 class ScoreMap:
-    """Category-specific LLM x Role score maps."""
-
     def __init__(
         self,
         categories: List[str],
@@ -40,7 +30,6 @@ class ScoreMap:
             }
 
     def select_agents(self, category: str, step: int) -> List[Tuple[str, str]]:
-        """Return [(role, llm), ...] for each role. step==0 -> random; step>0 -> argmax."""
         if category not in self._maps:
             category = self.categories[0]
 
@@ -65,7 +54,6 @@ class ScoreMap:
         return self._maps.get(category)
 
     def to_scores_dict(self) -> Dict[str, Dict[str, Dict[str, float]]]:
-        """Convert to scores[llm][category][role] for trust_score module."""
         out = {}
         for llm in self.llms:
             out[llm] = {}
@@ -76,7 +64,6 @@ class ScoreMap:
         return out
 
     def from_scores_dict(self, scores: Dict[str, Dict[str, Dict[str, float]]]):
-        """Update maps from scores[llm][category][role]."""
         for llm, cats in scores.items():
             for cat, roles in cats.items():
                 for role, val in roles.items():

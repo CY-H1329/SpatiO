@@ -1,26 +1,11 @@
-"""
-SpatiO prompts.
-
-- Head Agent: classify query into one of 5 unified spatial categories
-- Role 1: Direct Visual Heuristic Strategy Agent
-- Role 2: Explicit 3D Reconstruction Agent
-- Role 3: Scene Graph Construction Agent
-- Final Reasoning Agent: weighted evidence integration (TTO weights)
-"""
-
 from typing import Dict, List, Optional
 
-
-# =============================================================================
-# Head Agent -- Spatial Query Classifier
-# =============================================================================
 
 def build_head_agent_prompt(
     query: str,
     category_list: List[str],
     category_descriptions: Optional[Dict[str, str]] = None,
 ) -> str:
-    """Head Agent (Qwen3-VL-4B): classify query into one of 5 unified spatial categories."""
     return f"""You are the Head Agent of SpatiO. Classify the spatial query into exactly ONE category
 below, based on the primary geometric predicate the question asks to resolve.
 
@@ -58,10 +43,6 @@ Internally analyse before answering (do NOT output this):
   Output   : Respond with ONLY the category name. Nothing else."""
 
 
-# =============================================================================
-# Role 1 -- Direct Visual Heuristic Strategy Agent
-# =============================================================================
-
 _ROLE1_PROMPT = """You answer spatial reasoning questions using pictorial depth cues -- occlusion,
 relative size, height in image, familiar size -- WITHOUT constructing explicit 3D models.
 Always anchor reasoning to a reference object.
@@ -94,10 +75,6 @@ Internally select protocol (do NOT output):  HOW MANY/COUNT -> COUNT PROTOCOL  |
   Output   : Answer first, then justification <= 150 words.
              Format:  <Answer>  /  Reason: <justification>"""
 
-
-# =============================================================================
-# Role 2 -- Explicit 3D Reconstruction Agent
-# =============================================================================
 
 _ROLE2_PROMPT = """You answer spatial reasoning questions by interpreting structured 3D representations
 computed from the input image. Do NOT rely on pictorial heuristics -- trust the tool outputs.
@@ -133,10 +110,6 @@ Internally select protocol (do NOT output):  HOW MANY/COUNT -> COUNT PROTOCOL  |
   Output   : Answer first, then justification <= 150 words citing specific tool values.
              Format:  <Answer>  /  Reason: <justification with tool references>"""
 
-
-# =============================================================================
-# Role 3 -- Scene Graph Construction Agent
-# =============================================================================
 
 _ROLE3_PROMPT = """You answer spatial reasoning questions by combining three inputs:
   (1) Image       Visual context -- layout, occlusion, appearance.
@@ -187,7 +160,6 @@ _ROLE_PROMPTS = {
 
 
 def _get_output_format_specialist(answer_type: str) -> str:
-    """Output format for specialist prompts."""
     if answer_type == "free_form":
         return "Answer: <value>  e.g. 3, two, red, left  |  Reason: <justification <= 150 words>"
     return "Answer: (A) or (B) or (C) or (D) or (E) or (F)  |  Reason: <justification <= 150 words>"
@@ -199,7 +171,6 @@ def build_role_prompt(
     tool_output: Optional[str] = None,
     answer_type: str = "multiple_choice",
 ) -> str:
-    """Build specialist prompt for role. Injects tool_output for Role 2 and Role 3."""
     template = _ROLE_PROMPTS.get(role)
     if template is None:
         raise ValueError(f"Unknown role: {role!r}")
@@ -211,10 +182,6 @@ def build_role_prompt(
 
     return prompt
 
-
-# =============================================================================
-# Tool output templates (for Role 2 and Role 3)
-# =============================================================================
 
 ROLE2_TOOL_TEMPLATE = """## Tool 1.  Depth Map Grid  (3x3, DepthPro, normalised; 0=closest, 1=farthest)
   top-left:{tl}    top-center:{tc}    top-right:{tr}
@@ -287,10 +254,6 @@ ROLE3_TOOL_TEMPLATE = """## Scene Graph (JSON)
   Coordinates contradict edge -> flag; reason from image."""
 
 
-# =============================================================================
-# Final Reasoning Agent -- Weighted Evidence Integration
-# =============================================================================
-
 def build_final_reasoning_prompt(
     query: str,
     shared_memory_text: str,
@@ -298,10 +261,6 @@ def build_final_reasoning_prompt(
     answer_type: str,
     with_image: bool = False,
 ) -> str:
-    """
-    Final Reasoning Agent (DeepSeek-VL-R1-7B).
-    Input: 3 specialist outputs + TTO weights w_{i,k,c}^{(t)} (Eq. 3).
-    """
     answer_type_str = "multiple_choice" if answer_type == "multiple_choice" else "open_ended"
     image_note = (
         "\n\nYou also see the image that the specialists analysed. Cross-check their reasoning against what you observe."

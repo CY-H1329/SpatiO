@@ -1,15 +1,7 @@
-"""
-SharedMemory: per-step cache for specialist agent outputs.
-
-Cleared and rebuilt every step. The Final Reasoning Agent reads the full contents.
-"""
-
 from typing import Dict, List, Optional
 
 
 class SharedMemory:
-    """Per-step shared memory between specialist agents and the reasoning agent."""
-
     ROLE_STRATEGIES = {
         "direct_visual_heuristic": "Pictorial cues (occlusion, size, height in image). Strong for: count, general layout.",
         "explicit_3d_representation": "3D depth (z values, in front/behind). Strong for: closer/farther, depth order.",
@@ -34,11 +26,6 @@ class SharedMemory:
         return list(self._entries)
 
     def to_prompt_text(self, role_weights: Optional[Dict] = None) -> str:
-        """
-        Format all entries as text for the Final Reasoning Agent prompt.
-        role_weights: {(role, llm_name): w} — when provided, each agent line includes w.
-        Format: Agent i  role={role}  w={w}  |  Answer: {answer}  |  Reason: {reason}
-        """
         lines = []
         for i, e in enumerate(self._entries, 1):
             role, llm_name, answer, reason = e["role"], e["llm_name"], e["answer"], e["reason"]

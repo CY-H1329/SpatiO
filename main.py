@@ -1,14 +1,3 @@
-"""
-SpatiO — Entry point for supplement.
-
-Usage:
-  python main.py --benchmark cvbench --max_samples 100
-  python main.py --benchmark 3dsrbench --device_map cuda:0,cuda:1,cuda:2
-
-Models are loaded from core/runners. Implement load() in each runner
-to load from your model repository. Use device='cuda:X' for multi-GPU.
-"""
-
 import argparse
 import logging
 import sys
@@ -72,7 +61,7 @@ def _make_reasoning_generate(runners, device_map):
 
 def main():
     parser = argparse.ArgumentParser(description="SpatiO: Adaptive Test-Time Orchestration of Vision-Language Agents for Spatial Reasoning")
-    parser.add_argument("--benchmark", type=str, default="cvbench", choices=["cvbench", "3dsrbench"])
+    parser.add_argument("--benchmark", type=str, default="cvbench", choices=["cvbench", "3dsrbench", "stvqa"])
     parser.add_argument("--max_samples", type=int, default=10)
     parser.add_argument("--device_map", type=str, default=None,
                         help="Comma-separated device map, e.g. cuda:0,cuda:1,cuda:2")
@@ -95,35 +84,21 @@ def main():
     specialist_generate = _make_specialist_generate(runners, device_map)
     reasoning_generate = _make_reasoning_generate(runners, device_map)
 
-    # Placeholder dataset — replace with your benchmark loader
-    try:
-        from datasets import load_dataset
-        if args.benchmark == "cvbench":
-            ds = load_dataset("cvbench", split="test", trust_remote_code=True)
-        else:
-            ds = load_dataset("3dsrbench", split="test", trust_remote_code=True)
-    except Exception:
-        logger.warning("Benchmark dataset not found. Using placeholder.")
-        ds = [{"image": None, "question": "How many objects?", "answer": "(A)"}] * min(args.max_samples, 5)
+    from benchmarks import load_benchmark, get_benchmark_image, get_benchmark_prompt, get_benchmark_answer
+    ds = load_benchmark(args.benchmark, max_samples=args.max_samples)
 
     N_c_per_category = {}
     correct_count = 0
     total = 0
 
-    for step in range(min(args.max_samples, len(ds))):
+    for step in range(len(ds)):
         ex = ds[step]
-        image = ex.get("image")
-        query = ex.get("question", ex.get("prompt", "How many objects?"))
-        gt = ex.get("answer")
+        image = get_benchmark_image(ex, args.benchmark)
+        query = get_benchmark_prompt(ex, args.benchmark)
+        gt = get_benchmark_answer(ex, args.benchmark)
 
         if image is None:
             logger.warning("Step %d: no image, skipping", step)
-            continue
-
-        from PIL import Image
-        if not isinstance(image, Image.Image):
-            image = Image.open(image).convert("RGB") if hasattr(image, "__fspath__") else None
-        if image is None:
             continue
 
         result = run_step(
