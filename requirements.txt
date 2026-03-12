@@ -1,5 +1,6 @@
-torch>=2.0
-transformers>=4.51
-Pillow>=9.0
-datasets>=2.0
-requests>=2.28
+torch>=2.0.0
+transformers>=4.51.0
+Pillow>=9.0.0
+datasets>=2.14.0
+requests>=2.28.0
+numpy>=1.24.0

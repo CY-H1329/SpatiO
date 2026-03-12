@@ -1,8 +1,16 @@
+import os
+import sys
+from pathlib import Path
 from typing import Dict, Optional
 
 from PIL import Image
 
 from .base import BaseRunner
+
+_PKG_ROOT = Path(__file__).resolve().parents[1]
+MODEL_ROOT = os.environ.get("MODEL_ROOT", str(_PKG_ROOT.parent))
+if MODEL_ROOT and MODEL_ROOT not in sys.path:
+    sys.path.insert(0, MODEL_ROOT)
 
 
 class LLaVA4DRunner(BaseRunner):

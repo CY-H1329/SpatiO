@@ -3,7 +3,6 @@ import logging
 import sys
 from pathlib import Path
 
-# Add package root to path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from config import (
@@ -21,7 +20,6 @@ logger = logging.getLogger(__name__)
 
 
 def _make_head_generate(runners, device_map):
-    """Head agent uses Qwen3-VL-4B."""
     device = device_map.get(HEAD_AGENT_MODEL, "cuda:0") if device_map else "cuda:0"
     runner = get_runner(HEAD_AGENT_MODEL, device=device)
     runner.load()
@@ -33,7 +31,6 @@ def _make_head_generate(runners, device_map):
 
 
 def _make_specialist_generate(runners, device_map):
-    """Specialist generate: llm_name -> calls appropriate runner."""
     def fn(llm_name, image, prompt):
         device = device_map.get(llm_name, "cuda:0") if device_map else "cuda:0"
         if llm_name not in runners:
@@ -45,7 +42,6 @@ def _make_specialist_generate(runners, device_map):
 
 
 def _make_reasoning_generate(runners, device_map):
-    """Reasoning agent: DeepSeek-R1 or Qwen3-VL. Implement load() in core/runners."""
     device = device_map.get(REASONING_AGENT_MODEL, "cuda:0") if device_map else "cuda:0"
     model = REASONING_AGENT_MODEL
     if model not in runners:
@@ -71,7 +67,8 @@ def main():
 
     device_map = {}
     if args.device_map:
-        devices = [d.strip() for d in args.device_map.split(",")]
+        raw = [d.strip() for d in args.device_map.split(",")]
+        devices = [f"cuda:{d}" if d.isdigit() else d for d in raw]
         models = [HEAD_AGENT_MODEL, REASONING_AGENT_MODEL] + SPECIALIST_LLMS
         for i, m in enumerate(models):
             device_map[m] = devices[i % len(devices)]

@@ -2,7 +2,7 @@
 # SpatiO — Run all benchmarks (supplementary materials)
 #
 # Usage:
-#   cd /path/to/SpatiO
+#   cd <supplement_root>
 #   bash experiments/run_all.sh
 #
 # Runs each benchmark with:
@@ -24,7 +24,6 @@ SEED=42
 
 echo "=============================================="
 echo "SpatiO — Supplementary Materials"
-echo "Project: $PROJECT_ROOT"
 echo "Output: $OUTPUT_BASE"
 echo "Modes: 50 samples + full"
 echo "=============================================="

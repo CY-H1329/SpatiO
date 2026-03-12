@@ -35,7 +35,8 @@ def main():
 
     device_map = {}
     if args.device_map:
-        devices = [d.strip() for d in args.device_map.split(",")]
+        raw = [d.strip() for d in args.device_map.split(",")]
+        devices = [f"cuda:{d}" if d.isdigit() else d for d in raw]
         models = [HEAD_AGENT_MODEL, REASONING_AGENT_MODEL] + SPECIALIST_LLMS
         for i, m in enumerate(models):
             device_map[m] = devices[i % len(devices)]
@@ -61,13 +62,13 @@ def main():
             runners[name] = r
         return r.generate(img, p)
 
-    def _reason_gen(p, img=None):
+    def _reason_gen(prompt, image=None):
         r = runners.get(REASONING_AGENT_MODEL)
         if r is None:
             r = get_runner(REASONING_AGENT_MODEL, device=device_map.get(REASONING_AGENT_MODEL, "cuda:0"))
             r.load()
             runners[REASONING_AGENT_MODEL] = r
-        return r.generate(img, p)
+        return r.generate(image, prompt)
 
     max_samples = None if args.full else args.max_samples
     ds = load_benchmark(BENCHMARK, max_samples=max_samples, seed=args.seed)

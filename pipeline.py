@@ -120,15 +120,6 @@ def run_step(
     answer_type: Optional[str] = None,
     use_beta_weights: bool = True,
 ) -> Dict:
-    """
-    Execute one step of the SpatiO pipeline.
-
-    specialist_generate(llm_name, image, prompt) -> str
-    reasoning_generate(prompt, image=None) -> str
-
-    When use_beta_weights=True, role weights w = exp(beta*s)/sum(exp(beta*s')) are
-    injected into the final reasoning prompt.
-    """
     t0 = time.time()
     timing = {"head_agent_sec": 0.0, "specialists_sec": [], "reasoning_agent_sec": 0.0}
     if answer_type is None:

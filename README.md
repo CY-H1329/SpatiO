@@ -20,13 +20,18 @@ Supplementary materials for **SpatiO** — adaptive test-time orchestration and 
 | T | ramp_temp | 5 | Ramp temperature for φ(N_c) = 1 − exp(−N_c/T) |
 | β | beta | 5 | Weight sharpness: w = exp(β·s) / Σ exp(β·s') |
 
+## Reproduction
+
+See [REPRODUCTION.md](REPRODUCTION.md) for known issues and fixes. Set `MODEL_ROOT` to the path containing VLM implementations when using a host project.
+
 ## Structure
 
 ```
 SpatiO/
 ├── README.md
+├── REPRODUCTION.md        # Known issues and fixes for reproduction
 ├── config.py              # Hyperparameters and categories
-├── core/                   # Model runners (load from your implementation)
+├── core/                   # Model runners (load from MODEL_ROOT or host project)
 │   ├── base.py
 │   └── runners.py
 ├── benchmarks/             # Benchmark loaders
