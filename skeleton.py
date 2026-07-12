@@ -1,44 +1,33 @@
-"""
-SpatiO — high-level layout check (no GPU required).
-
-For real evals see REPRODUCTION.md / run_cvbench.py.
-"""
+"""Print Head + 5 specialists + Reasoning layout (no GPU)."""
 
 from config import (
-    KAPPA,
-    MU,
+    ALL_CATEGORIES,
+    BETA,
     GAMMA,
+    HEAD_AGENT_MODEL,
+    KAPPA,
     LAMBDA_F,
     LAMBDA_G,
+    MU,
     RAMP_TEMP,
-    BETA,
-    ROLES,
-    ALL_CATEGORIES,
-    SPECIALIST_LLMS,
-    HEAD_AGENT_MODEL,
     REASONING_AGENT_MODEL,
+    ROLES,
+    SPECIALIST_LLMS,
     TOP_K_SPECIALISTS,
 )
 
 
-def describe_pipeline() -> str:
-    lines = [
-        "SpatiO basic public pipeline",
-        f"  Head: {HEAD_AGENT_MODEL}",
-        f"  Specialists ({len(SPECIALIST_LLMS)}, top_k={TOP_K_SPECIALISTS}):",
-    ]
+def main() -> None:
+    print("SpatiO")
+    print(f"  head:       {HEAD_AGENT_MODEL}")
+    print(f"  specialists (top_k={TOP_K_SPECIALISTS}):")
     for i, name in enumerate(SPECIALIST_LLMS, 1):
-        lines.append(f"    {i}. {name}")
-    lines += [
-        f"  Roles: {', '.join(ROLES)}",
-        f"  Reasoning: {REASONING_AGENT_MODEL} (official agent later; interim stand-in in models/reasoning.py)",
-        "",
-        f"  kappa={KAPPA} mu={MU} gamma={GAMMA} lambda_f={LAMBDA_F} lambda_g={LAMBDA_G}",
-        f"  ramp_temp={RAMP_TEMP} beta={BETA}",
-        "  categories: " + ", ".join(ALL_CATEGORIES),
-    ]
-    return "\n".join(lines)
+        print(f"    {i}. {name}")
+    print(f"  roles:      {', '.join(ROLES)}")
+    print(f"  reasoning:  {REASONING_AGENT_MODEL}  [official agent later]")
+    print(f"  hparams:    κ={KAPPA} μ={MU} γ={GAMMA} λf={LAMBDA_F} λg={LAMBDA_G} T={RAMP_TEMP} β={BETA}")
+    print(f"  categories: {', '.join(ALL_CATEGORIES)}")
 
 
 if __name__ == "__main__":
-    print(describe_pipeline())
+    main()

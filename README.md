@@ -2,79 +2,85 @@
 
 **Adaptive Test-Time Orchestration of Vision-Language Agents for Spatial Reasoning**
 
-> **ECCV 2026 — Accepted** 🎉
+> **ECCV 2026 — Accepted**
 
-Basic **runnable** code for SpatiO: Head Agent + **5 specialist VLMs** + Reasoning slot (TTO).
+Official basic code: **Head + 5 specialists + TTO reasoning slot**.
 
-This is a **basic public release** for reproduction of the overall pipeline — not every internal experiment or proprietary detail.
-
-> **Reasoning Agent:** the paper’s official Reasoning Agent will be released **later**.  
-> This snapshot ships a **temporary Qwen3-VL stand-in** (or use `--final_aggregator majority`).
-
----
-
-## Pipeline
+The paper’s **official Reasoning Agent** will be released later.  
+This repo uses a temporary Qwen3-VL stand-in (or `--final_aggregator majority`).
 
 ```
-Image + Query → Head → 5 Specialists → Reasoning (TTO) → Final Answer
+Image + Query → Head → 5 Specialists → Reasoning (TTO) → Answer
 ```
 
-| Specialist | Hugging Face id |
-|------------|-----------------|
-| `llava4d` | `llava-hf/llava-1.5-7b-hf` |
-| `sa2va` | `ByteDance/Sa2VA-4B` |
-| `qwen3_4b` | `Qwen/Qwen3-VL-4B-Instruct` |
-| `spatial_rgpt` | `a8cheng/SpatialRGPT-VILA1.5-8B` |
-| `spatial_reasoner` | `ccvl/SpatialReasoner` |
+## Figures
 
-Head: `qwen3_4b`. Default `top_k=5`.
+| Observation | Pipeline |
+|:-----------:|:--------:|
+| ![Fig.2](assets/figures/2_observation.png) | ![Fig.3](assets/figures/3_main.png) |
 
-## Figures (ECCV 2026)
+## Models
 
-### Figure 2 — Observation
+| Role | Id | Checkpoint |
+|------|-----|------------|
+| Head | `qwen3_4b` | `Qwen/Qwen3-VL-4B-Instruct` |
+| Specialist | `llava4d` | `llava-hf/llava-1.5-7b-hf` |
+| Specialist | `sa2va` | `ByteDance/Sa2VA-4B` |
+| Specialist | `qwen3_4b` | `Qwen/Qwen3-VL-4B-Instruct` |
+| Specialist | `spatial_rgpt` | `a8cheng/SpatialRGPT-VILA1.5-8B` |
+| Specialist | `spatial_reasoner` | `ccvl/SpatialReasoner` |
+| Reasoning | `deepseek_r1` | *later* (interim: Qwen3-VL-8B) |
 
-![Figure 2: Observation](assets/figures/2_observation.png)
+Default `top_k=5`. SpatialRGPT needs [`AnjieCheng/SpatialRGPT`](https://github.com/AnjieCheng/SpatialRGPT) and `SPATIALRGPT_PATH`.
 
-### Figure 3 — Main pipeline
-
-![Figure 3: Main](assets/figures/3_main.png)
-
-## Quick start
+## Setup
 
 ```bash
 git clone https://github.com/CY-H1329/SpatiO.git
 cd SpatiO
 
-# Python ≥ 3.10
-bash scripts/setup_spatial_reasoning_env_fast.sh
-conda activate spatial_reasoning   # or the env name you created
+bash scripts/setup_env.sh          # conda env, Python ≥ 3.10
+conda activate spatial_reasoning
 
 git clone https://github.com/AnjieCheng/SpatialRGPT.git ../SpatialRGPT
 export SPATIALRGPT_PATH="$(cd ../SpatialRGPT && pwd)"
 
-python scripts/smoke_pipeline_mock.py
-python scripts/verify_spatial_reasoning_env.py
-
-# Full 5-specialist eval (multi-GPU recommended)
-# device_map: head, reasoner*, llava4d, sa2va, qwen3_4b, spatial_rgpt, spatial_reasoner
-python run_cvbench.py --max_samples 50 --test_only --top_k 5 \
-  --device_map 0,1,2,3,4,5,6 \
-  --output_dir results/cvbench_basic
+python scripts/smoke_test.py
 ```
 
-See [REPRODUCTION.md](REPRODUCTION.md) and [docs/MODELS.md](docs/MODELS.md).
+## Run
 
-**Not included (on purpose):** large ablation sweeps, MindCube tooling dumps, official Reasoning Agent.
+```bash
+# device_map: head, reasoner, then 5 specialists
+python run_cvbench.py --max_samples 50 --test_only --top_k 5 \
+  --device_map 0,1,2,3,4,5,6 --output_dir results/cvbench
 
-## Paper hyperparameters
+python run_3dsrbench.py --max_samples 50 --test_only --top_k 5 \
+  --device_map 0,1,2,3,4,5,6 --output_dir results/3dsr
+```
 
-| Symbol | Value |
-|--------|-------|
-| κ / μ / γ | 0.5 / 0.3 / 0.3 |
-| λf / λg | 0.3 / 0.1 |
-| T / β | 5 / 5 |
+Also: `run_stvqa.py`, `run_mmsi.py`. Details: [REPRODUCTION.md](REPRODUCTION.md).
 
-[`config.py`](config.py)
+## Layout
+
+```
+SpatiO/
+  pipeline.py, trust_score.py, prompts.py, config.py
+  models/          # VLM backends (5 specialists + interim reasoner)
+  roles/           # specialist role prompts
+  benchmarks/      # HF loaders
+  run_*.py         # eval entry points
+  scripts/         # setup + smoke
+  assets/figures/  # paper figures
+```
+
+## Hyperparameters
+
+| κ | μ | γ | λf | λg | T | β |
+|---|---|---|----|----|---|---|
+| 0.5 | 0.3 | 0.3 | 0.3 | 0.1 | 5 | 5 |
+
+See `config.py`.
 
 ## Citation
 
@@ -88,4 +94,4 @@ See [REPRODUCTION.md](REPRODUCTION.md) and [docs/MODELS.md](docs/MODELS.md).
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT — [LICENSE](LICENSE).

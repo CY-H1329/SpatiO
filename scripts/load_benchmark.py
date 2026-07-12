@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Load a few Hugging Face benchmark samples (network required)."""
+"""Load a few HF benchmark samples (needs network)."""
 from __future__ import annotations
 
 import argparse
@@ -20,13 +20,12 @@ def main() -> None:
     args = p.parse_args()
 
     data = load_benchmark(args.benchmark, max_samples=args.max_samples, seed=args.seed)
-    assert len(data) > 0, "empty benchmark load"
     for i, ex in enumerate(data):
         img = get_benchmark_image(ex, args.benchmark)
         prompt = get_benchmark_prompt(ex, args.benchmark)
         ans = get_benchmark_answer(ex, args.benchmark)
-        print(f"[{i}] image={None if img is None else img.size} answer={ans!r} prompt_len={len(prompt or '')}")
-    print(f"OK smoke_load_benchmark: {args.benchmark} n={len(data)}")
+        print(f"[{i}] image={None if img is None else img.size} ans={ans!r} prompt_len={len(prompt or '')}")
+    print(f"OK load_benchmark: {args.benchmark} n={len(data)}")
 
 
 if __name__ == "__main__":

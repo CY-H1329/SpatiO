@@ -1,6 +1,7 @@
 import os
 from typing import Set
 
+# Paper hyperparameters
 KAPPA = 0.5
 MU = 0.3
 GAMMA = 0.3
@@ -9,12 +10,8 @@ LAMBDA_G = 0.1
 RAMP_TEMP = 5.0
 BETA = 5.0
 
-# Profiles:
-#   paper   — full 5 specialist VLMs (default; what third parties should run)
-#   minimal — Qwen-only (dev smoke only; not for public reproduction claims)
+# paper (default) = all 5 specialists; minimal = Qwen-only smoke
 _PROFILE = (os.environ.get("SPATIO_PROFILE", "paper") or "paper").strip().lower()
-
-# Full specialist pool (paper): selection / TTO chooses among these 5.
 _SPECIALIST_LLMS_DEFAULT = [
     "llava4d",
     "sa2va",
@@ -22,16 +19,14 @@ _SPECIALIST_LLMS_DEFAULT = [
     "spatial_rgpt",
     "spatial_reasoner",
 ]
-_SPECIALIST_LLMS_MINIMAL = ["qwen3_4b", "qwen3_4b", "qwen3_4b"]
 _SPECIALIST_LLMS_ENV = os.environ.get("SPATIO_SPECIALIST_LLMS", "").strip()
 if _SPECIALIST_LLMS_ENV:
     SPECIALIST_LLMS = [s.strip() for s in _SPECIALIST_LLMS_ENV.split(",") if s.strip()]
 elif _PROFILE in ("minimal", "qwen", "qwen_only"):
-    SPECIALIST_LLMS = list(_SPECIALIST_LLMS_MINIMAL)
+    SPECIALIST_LLMS = ["qwen3_4b", "qwen3_4b", "qwen3_4b"]
 else:
     SPECIALIST_LLMS = list(_SPECIALIST_LLMS_DEFAULT)
 
-# Default Top-k = full pool so all specialists remain eligible each step.
 TOP_K_SPECIALISTS = int(os.environ.get("SPATIO_TOP_K", str(len(SPECIALIST_LLMS))))
 
 _ROLE_SET_ID = os.environ.get("SPATIO_ROLE_SET", "").strip() or "human_v0"
@@ -43,7 +38,6 @@ try:
     ROLES_WITH_TOOLS: Set[str] = _rs.roles_with_tools
     ROLE_TO_TOOL = _rs.role_to_tool
 except Exception:
-    # Fallback safe defaults
     ROLES = [
         "direct_visual_heuristic",
         "explicit_3d_representation",
@@ -57,8 +51,7 @@ except Exception:
     }
 
 HEAD_AGENT_MODEL = "qwen3_4b"
-# Official paper Reasoning Agent will be released later; slot name kept for compatibility.
-# Runtime uses models/reasoning.py interim stand-in (see REPRODUCTION.md).
+# Official Reasoning Agent later; models/reasoning.py is an interim stand-in.
 REASONING_AGENT_MODEL = "deepseek_r1"
 
 ALL_CATEGORIES = [
