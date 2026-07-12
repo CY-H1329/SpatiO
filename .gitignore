@@ -1,0 +1,42 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+*.egg-info/
+dist/
+build/
+
+# Envs & secrets
+.env
+.env.*
+.venv/
+venv/
+
+# IDE / OS
+.idea/
+.vscode/
+.ipynb_checkpoints/
+.DS_Store
+Thumbs.db
+index-9.html
+
+# Local / heavy
+data/
+results/
+output/
+workspace/
+*.log
+*.pt
+*.pth
+*.bin
+*.safetensors
+*.ckpt
+*.zip
+
+# Not part of public architecture snapshot
+experiments/
+scripts/
+run_mindcube.py
+run_mindcube_tto.py
+*_private*/
