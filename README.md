@@ -29,21 +29,99 @@ Image + Query → Head → 5 Specialists → Reasoning (TTO) → Answer
 | Specialist | `spatial_reasoner` | `ccvl/SpatialReasoner` |
 | Reasoning | `deepseek_r1` | *later* (interim: Qwen3-VL-8B) |
 
-## Setup & run
+## Setup
+
+Requires **Python ≥ 3.10**, conda, and CUDA GPUs.
+
+### 1. Clone this repository
 
 ```bash
-git clone https://github.com/CY-H1329/SpatiO.git && cd SpatiO
-bash scripts/setup_env.sh && conda activate spatial_reasoning
-
-git clone https://github.com/AnjieCheng/SpatialRGPT.git ../SpatialRGPT
-export SPATIALRGPT_PATH="$(cd ../SpatialRGPT && pwd)"
-
-python scripts/smoke_test.py
-python evals/run_cvbench.py --max_samples 50 --test_only --top_k 5 \
-  --device_map 0,1,2,3,4,5,6 --output_dir results/cvbench
+git clone https://github.com/CY-H1329/SpatiO.git
+cd SpatiO
 ```
 
-Full guide: [docs/REPRODUCTION.md](docs/REPRODUCTION.md).
+### 2. Create the environment
+
+```bash
+bash scripts/setup_env.sh
+conda activate spatial_reasoning
+```
+
+This installs PyTorch (CUDA wheels by default) and the packages in `requirements-no-torch.txt`.  
+Optional: `export TORCH_INDEX_URL=https://download.pytorch.org/whl/cu124` (or `.../cpu`) before running the script.
+
+### 3. Clone SpatialRGPT (needed for the `spatial_rgpt` specialist)
+
+```bash
+git clone https://github.com/AnjieCheng/SpatialRGPT.git ../SpatialRGPT
+export SPATIALRGPT_PATH="$(cd ../SpatialRGPT && pwd)"
+```
+
+Add the `export` line to your shell profile if you want it permanent.
+
+### 4. Sanity checks
+
+```bash
+python scripts/smoke_test.py      # pipeline + TTO with mock VLMs (CPU)
+python scripts/verify_env.py      # torch / transformers / backends
+python -m spatio.skeleton         # print Head + 5 specialists layout
+```
+
+More detail: [docs/REPRODUCTION.md](docs/REPRODUCTION.md).
+
+## Run
+
+`device_map` order is:
+
+`head, reasoner, llava4d, sa2va, qwen3_4b, spatial_rgpt, spatial_reasoner`
+
+Multi-GPU is recommended for the full 5-specialist stack.
+
+### CV-Bench
+
+```bash
+export SPATIALRGPT_PATH="$(cd ../SpatialRGPT && pwd)"
+
+python evals/run_cvbench.py \
+  --max_samples 50 \
+  --test_only \
+  --top_k 5 \
+  --device_map 0,1,2,3,4,5,6 \
+  --output_dir results/cvbench
+```
+
+### 3DSRBench
+
+```bash
+python evals/run_3dsrbench.py \
+  --max_samples 50 \
+  --test_only \
+  --top_k 5 \
+  --device_map 0,1,2,3,4,5,6 \
+  --output_dir results/3dsr
+```
+
+### Other benchmarks
+
+```bash
+python evals/run_stvqa.py  --max_samples 50 --test_only --top_k 5 \
+  --device_map 0,1,2,3,4,5,6 --output_dir results/stvqa
+
+python evals/run_mmsi.py   --max_samples 50 --test_only --top_k 5 \
+  --device_map 0,1,2,3,4,5,6 --output_dir results/mmsi
+```
+
+### Without the interim reasoner VLM
+
+Until the official Reasoning Agent is released, you can aggregate specialists only:
+
+```bash
+python evals/run_cvbench.py \
+  --max_samples 50 --test_only --top_k 5 \
+  --final_aggregator majority \
+  --device_map 0,0,1,2,3,4,5 \
+  --output_dir results/cvbench_majority
+```
 
 ## Repository layout
 
