@@ -1,0 +1,9 @@
+{
+  "set_id": "human_v0",
+  "description": "Original 3 roles chosen by authors (baseline).",
+  "roles": [
+    { "id": "direct_visual_heuristic", "name": "Pictorial cue specialist", "tool": "none" },
+    { "id": "explicit_3d_representation", "name": "3D representation specialist", "tool": "3d_representation" },
+    { "id": "scene_graph_construction", "name": "Scene graph specialist", "tool": "scene_graph" }
+  ]
+}

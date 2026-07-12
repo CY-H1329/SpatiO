@@ -1,0 +1,172 @@
+"""
+Sa2VA inference (ByteDance/Sa2VA-4B).
+Uses model.predict_forward() for image chat.
+Requires: transformers, trust_remote_code=True
+
+Note: Sa2VA loading triggers PEFT -> bitsandbytes. When bitsandbytes CUDA
+fails (e.g. CUDA 12.4), we mock it so PEFT can load. Sa2VA inference does
+not use bitsandbytes.
+"""
+import importlib.util
+import sys
+import threading
+import types
+import warnings
+
+_SA2VA_LOAD_LOCK = threading.Lock()
+from typing import Optional
+from unittest.mock import MagicMock
+
+from PIL import Image
+import torch
+from transformers import AutoModel, AutoTokenizer
+from transformers.modeling_utils import PreTrainedModel
+
+
+def _mock_bitsandbytes_for_peft():
+    """Use real bitsandbytes when available (e.g. conda spatial_reasoning).
+    Mock only when CUDA lib fails (e.g. CUDA 12.4, libbitsandbytes_cuda124.so missing)."""
+    if "bitsandbytes" in sys.modules:
+        return
+    try:
+        import bitsandbytes  # noqa: F401
+        return  # Real one works (e.g. conda activate spatial_reasoning)
+    except (RuntimeError, ImportError, OSError):
+        sys.modules.pop("bitsandbytes", None)  # Remove partial/failed load
+    fake = types.ModuleType("bitsandbytes")
+    fake.__spec__ = importlib.util.spec_from_loader("bitsandbytes", loader=None, origin="mock")
+    fake.nn = MagicMock()
+    fake.optim = MagicMock()
+    fake.cuda_setup = MagicMock()
+    fake.cextension = MagicMock()
+    fake.utils = MagicMock()
+    fake.research = MagicMock()
+    sys.modules["bitsandbytes"] = fake
+
+
+def _patch_tied_weights_for_sa2va():
+    """Sa2VA uses _tied_weights_keys; transformers 5.x expects all_tied_weights_keys."""
+    # transformers 5.x: _adjust_tied_keys_with_tied_pointers uses all_tied_weights_keys
+    import transformers.modeling_utils as _mu
+    if hasattr(_mu.PreTrainedModel, "_adjust_tied_keys_with_tied_pointers"):
+        _orig_adj = _mu.PreTrainedModel._adjust_tied_keys_with_tied_pointers
+
+        def _patched_adj(self, *args, **kwargs):
+            if not hasattr(self, "all_tied_weights_keys"):
+                old = getattr(self, "_tied_weights_keys", None)
+                if old is not None and hasattr(old, "keys"):
+                    self.all_tied_weights_keys = dict(old)
+                elif isinstance(old, (list, tuple)):
+                    self.all_tied_weights_keys = {k: None for x in old for k in (x if isinstance(x, (list, tuple)) else [x])}
+                else:
+                    self.all_tied_weights_keys = {}
+            return _orig_adj(self, *args, **kwargs)
+
+        _mu.PreTrainedModel._adjust_tied_keys_with_tied_pointers = _patched_adj
+
+    if hasattr(PreTrainedModel, "mark_tied_weights_as_initialized"):
+        _orig = PreTrainedModel.mark_tied_weights_as_initialized
+
+        def _patched(self):
+            if not hasattr(self, "all_tied_weights_keys"):
+                old = getattr(self, "_tied_weights_keys", None)
+                if old is not None and hasattr(old, "keys"):
+                    self.all_tied_weights_keys = old
+                elif isinstance(old, (list, tuple)):
+                    self.all_tied_weights_keys = {k: None for x in old for k in (x if isinstance(x, (list, tuple)) else [x])}
+                else:
+                    self.all_tied_weights_keys = {}
+            _orig(self)
+
+        PreTrainedModel.mark_tied_weights_as_initialized = _patched
+
+
+def _patch_torch_linspace_for_sa2va():
+    """InternVisionModel uses torch.linspace().item() which fails on meta tensors.
+    Force CPU device to avoid meta device from transformers/accelerate.
+    Returns the original to restore later."""
+    _orig = torch.linspace
+
+    def _patched(*args, **kwargs):
+        kwargs.setdefault("device", torch.device("cpu"))
+        return _orig(*args, **kwargs)
+
+    torch.linspace = _patched
+    return _orig
+
+
+class Sa2VARunner:
+    """Runner for Sa2VA (e.g. ByteDance/Sa2VA-4B)."""
+
+    def __init__(
+        self,
+        model_id: str = "ByteDance/Sa2VA-4B",
+        device: Optional[str] = None,
+        use_flash_attn: bool = False,
+        **kwargs,
+    ):
+        device = device or ("cuda" if torch.cuda.is_available() else "cpu")
+        self.model_id = model_id
+
+        _mock_bitsandbytes_for_peft()
+
+        load_kwargs = dict(
+            **kwargs,
+            torch_dtype=torch.bfloat16,
+            low_cpu_mem_usage=False,
+            trust_remote_code=True,
+            use_flash_attn=use_flash_attn,
+            device_map=None,
+        )
+        _patch_tied_weights_for_sa2va()
+        _orig_linspace = _patch_torch_linspace_for_sa2va()
+        with _SA2VA_LOAD_LOCK:
+            try:
+                self.model = AutoModel.from_pretrained(model_id, **load_kwargs).eval()
+            finally:
+                torch.linspace = _orig_linspace
+            if isinstance(device, str) and device.startswith("cuda"):
+                self.model = self.model.to(device)
+            elif device == "cpu":
+                self.model = self.model.float().to("cpu")
+        self.tokenizer = AutoTokenizer.from_pretrained(
+            model_id, trust_remote_code=True, use_fast=False
+        )
+        self.device = device
+
+    def generate(
+        self,
+        image: Image.Image,
+        prompt: str,
+        temperature: float = 0.0,
+        max_new_tokens: int = 512,
+        top_k: int = 0,
+        top_p: float = 0.0,
+        **kwargs,
+    ) -> str:
+        # Sa2VA / SAM2 may create tensors on the current CUDA device.
+        # In multi-GPU single-process runs, ensure the current device matches this runner.
+        try:
+            if isinstance(self.device, str) and self.device.startswith("cuda") and torch.cuda.is_available():
+                idx = int(self.device.split(":", 1)[1]) if ":" in self.device else 0
+                torch.cuda.set_device(idx)
+        except Exception:
+            pass
+        # Sa2VA format: <image> + text
+        text_prompts = f"<image>{prompt}"
+        image_rgb = image.convert("RGB") if image.mode != "RGB" else image
+
+        input_dict = {
+            "image": image_rgb,
+            "text": text_prompts,
+            "past_text": "",
+            "mask_prompts": None,
+            "tokenizer": self.tokenizer,
+        }
+        with warnings.catch_warnings():
+            warnings.filterwarnings(
+                "ignore",
+                message="Passing `generation_config` together with generation-related arguments",
+            )
+            return_dict = self.model.predict_forward(**input_dict)
+        return (return_dict.get("prediction") or "").strip()

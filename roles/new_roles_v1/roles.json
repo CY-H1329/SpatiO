@@ -1,0 +1,9 @@
+{
+  "set_id": "new_roles_v1",
+  "description": "Alternative 3-role design (LLM-friendly) to demonstrate role definition is easy and reproducible.",
+  "roles": [
+    { "id": "visual_grounding_audit", "name": "Visual grounding & ambiguity audit", "tool": "none" },
+    { "id": "metric_geometry_checker", "name": "Metric geometry checker", "tool": "3d_representation" },
+    { "id": "relational_graph_counter", "name": "Relational graph & counting specialist", "tool": "scene_graph" }
+  ]
+}

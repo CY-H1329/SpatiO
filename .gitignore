@@ -34,9 +34,9 @@ workspace/
 *.ckpt
 *.zip
 
-# Not part of public architecture snapshot
+# Not part of the basic public release
 experiments/
-scripts/
 run_mindcube.py
 run_mindcube_tto.py
 *_private*/
+SpatiO_private_full/

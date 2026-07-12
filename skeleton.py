@@ -1,7 +1,7 @@
 """
-SpatiO — public architecture skeleton.
+SpatiO — high-level layout check (no GPU required).
 
-Exposes Head + 5 specialists + Reasoning (TTO) layout without proprietary details.
+For real evals see REPRODUCTION.md / run_cvbench.py.
 """
 
 from config import (
@@ -17,40 +17,25 @@ from config import (
     SPECIALIST_LLMS,
     HEAD_AGENT_MODEL,
     REASONING_AGENT_MODEL,
-    MODEL_CARD,
     TOP_K_SPECIALISTS,
 )
 
 
 def describe_pipeline() -> str:
     lines = [
-        "SpatiO public architecture",
-        "",
-        "  Image + Query",
-        f"    → Head Agent [{HEAD_AGENT_MODEL}]",
-        "    → Specialist pool (paper, all 5):",
+        "SpatiO basic public pipeline",
+        f"  Head: {HEAD_AGENT_MODEL}",
+        f"  Specialists ({len(SPECIALIST_LLMS)}, top_k={TOP_K_SPECIALISTS}):",
     ]
     for i, name in enumerate(SPECIALIST_LLMS, 1):
-        lines.append(f"         {i}. {name:18s}  {MODEL_CARD.get(name, '')}")
+        lines.append(f"    {i}. {name}")
     lines += [
-        f"         roles (ids): {', '.join(ROLES)}",
-        f"         top_k={TOP_K_SPECIALISTS}",
-        f"    → Reasoning Agent [{REASONING_AGENT_MODEL}]  ** detailed code: later release **",
-        "    → Final answer (TTO-weighted synthesis)",
+        f"  Roles: {', '.join(ROLES)}",
+        f"  Reasoning: {REASONING_AGENT_MODEL} (official agent later; interim stand-in in models/reasoning.py)",
         "",
-        "Paper hyperparameters (public):",
-        f"  kappa={KAPPA}, mu={MU}, gamma={GAMMA}",
-        f"  lambda_f={LAMBDA_F}, lambda_g={LAMBDA_G}",
-        f"  ramp_temp={RAMP_TEMP}, beta={BETA}",
-        "",
-        "Categories:",
-        "  - " + "\n  - ".join(ALL_CATEGORIES),
-        "",
-        "Withheld in this snapshot:",
-        "  - full prompt templates",
-        "  - TTO / trust-update implementation details",
-        "  - tool stacks & eval orchestration internals",
-        "  - official Reasoning Agent",
+        f"  kappa={KAPPA} mu={MU} gamma={GAMMA} lambda_f={LAMBDA_F} lambda_g={LAMBDA_G}",
+        f"  ramp_temp={RAMP_TEMP} beta={BETA}",
+        "  categories: " + ", ".join(ALL_CATEGORIES),
     ]
     return "\n".join(lines)
 

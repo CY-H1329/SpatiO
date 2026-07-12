@@ -1,0 +1,43 @@
+# Environnement conda « spatial_reasoning » — SpatiO + modèles actuels (Qwen3-VL, datasets HF, STVQA parquet).
+#
+# Création : conda env create -f SpatiO/environment-spatial_reasoning.yml
+# Mise à jour d’un env existant du même nom :
+#   conda activate spatial_reasoning
+#   conda env update -f SpatiO/environment-spatial_reasoning.yml --prune
+#
+# # Self-contained: models/_backend_*.py (optional SPATIALRGPT_PATH for paper stack)
+
+name: spatial_reasoning
+channels:
+  - pytorch
+  - nvidia
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.10
+  - pip
+  - pytorch>=2.2.0,<2.7
+  - torchvision
+  - pip:
+      # Qwen3-VL (SpatiO head / specialists) : Qwen3VLForConditionalGeneration depuis 4.51
+      - transformers>=4.51.0,<5.0.0
+      - huggingface_hub>=0.24.0,<1.0.0
+      - tokenizers>=0.20.0
+      - safetensors>=0.4.0
+      - accelerate>=0.33.0,<1.0.0
+      - qwen-vl-utils>=0.0.8
+      # HF datasets + STVQA-7K (parquet / pyarrow)
+      - datasets>=2.19.0,<4.0.0
+      - pyarrow>=14.0.0
+      - dill>=0.3.8
+      # Infra
+      - pillow>=9.5.0
+      - requests>=2.31.0
+      - pyyaml>=6.0
+      - tqdm>=4.66.0
+      - numpy>=1.24.0,<2.1.0
+      - pandas>=2.0.0
+      # LoRA / baselines souvent utilisés avec les mêmes runners
+      - peft>=0.10.0,<0.17.0
+      - sentencepiece>=0.1.99
+      - protobuf>=3.20.0

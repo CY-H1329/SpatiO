@@ -4,39 +4,30 @@
 
 > **ECCV 2026 — Accepted** 🎉
 
-Public **architecture release**: Head Agent + **5 specialist VLMs** + Reasoning Agent (TTO).
+Basic **runnable** code for SpatiO: Head Agent + **5 specialist VLMs** + Reasoning slot (TTO).
 
-Implementation **details** (full prompts, TTO internals, tool stacks, proprietary reasoner wiring, large experiment sweeps) are **not** open-sourced here.  
-They will be released later (and/or kept for patent / institutional reporting).
+This is a **basic public release** for reproduction of the overall pipeline — not every internal experiment or proprietary detail.
+
+> **Reasoning Agent:** the paper’s official Reasoning Agent will be released **later**.  
+> This snapshot ships a **temporary Qwen3-VL stand-in** (or use `--final_aggregator majority`).
 
 ---
 
-## Pipeline (what this repo exposes)
+## Pipeline
 
 ```
-Image + Query
-    → Head Agent              (category routing & role selection)
-    → 5 Specialist Agents     (complementary spatial views)
-    → Reasoning Agent (TTO)   (reliability-aware synthesis → final answer)
+Image + Query → Head → 5 Specialists → Reasoning (TTO) → Final Answer
 ```
 
-| Stage | Public here | Detailed code |
-|-------|-------------|---------------|
-| Head Agent | Interface + role in the pipeline | Later |
-| 5 Specialists | Names + HF ids + thin loaders | Prompt / tool details later |
-| Reasoning Agent | Slot in the pipeline | **Later release** (paper reasoner) |
-| TTO / trust update | Paper hyperparameters in `config.py` | Full update rules later |
-| Eval runners | High-level entry stubs | Full scripts later |
+| Specialist | Hugging Face id |
+|------------|-----------------|
+| `llava4d` | `llava-hf/llava-1.5-7b-hf` |
+| `sa2va` | `ByteDance/Sa2VA-4B` |
+| `qwen3_4b` | `Qwen/Qwen3-VL-4B-Instruct` |
+| `spatial_rgpt` | `a8cheng/SpatialRGPT-VILA1.5-8B` |
+| `spatial_reasoner` | `ccvl/SpatialReasoner` |
 
-### Specialist pool (paper)
-
-1. `llava4d` — `llava-hf/llava-1.5-7b-hf`  
-2. `sa2va` — `ByteDance/Sa2VA-4B`  
-3. `qwen3_4b` — `Qwen/Qwen3-VL-4B-Instruct`  
-4. `spatial_rgpt` — `a8cheng/SpatialRGPT-VILA1.5-8B` (+ [SpatialRGPT](https://github.com/AnjieCheng/SpatialRGPT))  
-5. `spatial_reasoner` — `ccvl/SpatialReasoner`  
-
-Head: `qwen3_4b`. Reasoning Agent: **coming later** (slot reserved as `deepseek_r1`).
+Head: `qwen3_4b`. Default `top_k=5`.
 
 ## Figures (ECCV 2026)
 
@@ -48,28 +39,42 @@ Head: `qwen3_4b`. Reasoning Agent: **coming later** (slot reserved as `deepseek_
 
 ![Figure 3: Main](assets/figures/3_main.png)
 
-## Quick look (no proprietary details)
+## Quick start
 
 ```bash
 git clone https://github.com/CY-H1329/SpatiO.git
 cd SpatiO
-python skeleton.py
+
+# Python ≥ 3.10
+bash scripts/setup_spatial_reasoning_env_fast.sh
+conda activate spatial_reasoning   # or the env name you created
+
+git clone https://github.com/AnjieCheng/SpatialRGPT.git ../SpatialRGPT
+export SPATIALRGPT_PATH="$(cd ../SpatialRGPT && pwd)"
+
+python scripts/smoke_pipeline_mock.py
+python scripts/verify_spatial_reasoning_env.py
+
+# Full 5-specialist eval (multi-GPU recommended)
+# device_map: head, reasoner*, llava4d, sa2va, qwen3_4b, spatial_rgpt, spatial_reasoner
+python run_cvbench.py --max_samples 50 --test_only --top_k 5 \
+  --device_map 0,1,2,3,4,5,6 \
+  --output_dir results/cvbench_basic
 ```
 
-This prints the public pipeline layout and paper hyperparameters.  
-It does **not** run the full private eval stack.
+See [REPRODUCTION.md](REPRODUCTION.md) and [docs/MODELS.md](docs/MODELS.md).
 
-## Paper hyperparameters (defaults)
+**Not included (on purpose):** large ablation sweeps, MindCube tooling dumps, official Reasoning Agent.
 
-| Symbol | Value | Meaning |
-|--------|-------|---------|
-| κ (kappa) | 0.5 | Divergence penalty (train) |
-| μ (mu) | 0.3 | Short- vs long-term balance |
-| γ (gamma) | 0.3 | Direct reward injection |
-| λf / λg | 0.3 / 0.1 | EMA decays |
-| T / β | 5 / 5 | Ramp temperature / weight sharpness |
+## Paper hyperparameters
 
-See [`config.py`](config.py).
+| Symbol | Value |
+|--------|-------|
+| κ / μ / γ | 0.5 / 0.3 / 0.3 |
+| λf / λg | 0.3 / 0.1 |
+| T / β | 5 / 5 |
+
+[`config.py`](config.py)
 
 ## Citation
 
@@ -81,9 +86,6 @@ See [`config.py`](config.py).
 }
 ```
 
-*(Author list and proceedings details will be updated for the camera-ready version.)*
-
 ## License
 
-MIT License — see [LICENSE](LICENSE).  
-Architecture / interfaces in this snapshot; detailed proprietary modules intentionally withheld.
+MIT — see [LICENSE](LICENSE).
