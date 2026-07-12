@@ -1,65 +1,48 @@
 #!/usr/bin/env python3
+"""
+SpatiO — MMSI-Bench evaluation.
+Multi-image benchmark: images are concatenated horizontally.
+
+Usage:
+  python evals/run_mmsi.py --max_samples 500 --test_only
+  python evals/run_mmsi.py --max_samples 500 --test_only --device_map="1,3,4,5,6"
+  python evals/run_mmsi.py --max_samples 500 --test_only
+"""
+import sys
+from pathlib import Path
+_ROOT = Path(__file__).resolve().parents[1]
+if str(_ROOT) not in sys.path:
+    sys.path.insert(0, str(_ROOT))
+
 import argparse
 import json
 import logging
+import os
 import sys
 from datetime import datetime
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from config import (
-    ALL_CATEGORIES,
-    SPECIALIST_LLMS,
-    HEAD_AGENT_MODEL,
-    REASONING_AGENT_MODEL,
-    BETA as DEFAULT_BETA,
-    TOP_K_SPECIALISTS,
-)
-from score_map import ScoreMap
-from pipeline import run_step
-from core import get_runner
-from benchmarks import load_benchmark, get_benchmark_image, get_benchmark_prompt, get_benchmark_answer
+from spatio.config import ALL_CATEGORIES, SPECIALIST_LLMS, HEAD_AGENT_MODEL, REASONING_AGENT_MODEL
+from spatio.score_map import ScoreMap
+from spatio.pipeline import run_step
+from spatio.core import get_runner
+from spatio.benchmarks import load_benchmark, get_benchmark_image, get_benchmark_prompt, get_benchmark_answer, get_benchmark_category
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger(__name__)
 
-BENCHMARK = "3dsrbench"
+BENCHMARK = "mmsi_bench"
 
 
 def main():
-    parser = argparse.ArgumentParser(description="SpatiO — 3DSRBench")
-    parser.add_argument("--max_samples", type=int, default=50)
+    parser = argparse.ArgumentParser(description="SpatiO — MMSI-Bench")
+    parser.add_argument("--max_samples", type=int, default=500)
     parser.add_argument("--full", action="store_true")
     parser.add_argument("--train", action="store_true")
     parser.add_argument("--test_only", action="store_true")
-    parser.add_argument("--parallel_specialists", action="store_true", help="Exécute les 3 spécialistes en parallèle (threads).")
-    parser.add_argument(
-        "--top_k",
-        type=int,
-        default=TOP_K_SPECIALISTS,
-        help="Top-k specialist candidates (default: full pool of 5).",
-    )
-    parser.add_argument("--beta", type=float, default=None, help="Hyperparam: beta pour softmax des poids (ex: 1,3,5,10,20).")
-    parser.add_argument(
-        "--role_assignment",
-        type=str,
-        default="default",
-        choices=["default", "fixed", "random"],
-        help="Règle d'assignation des rôles: default(trust-based), fixed, random.",
-    )
-    parser.add_argument(
-        "--final_aggregator",
-        type=str,
-        default="reasoner",
-        choices=["reasoner", "majority", "weighted"],
-        help="Ablation: remplace le Reasoner final par un vote (majority / weighted par poids TTO).",
-    )
-    parser.add_argument("--no_short_term_ema", action="store_true", help="Ablation: désactive l'EMA court-terme (lambda_f=0).")
-    parser.add_argument("--no_long_term_ema", action="store_true", help="Ablation: désactive l'EMA long-terme (lambda_g=0).")
-    parser.add_argument("--no_delta_penalty", action="store_true", help="Ablation: retire la pénalité delta_i dans la reward.")
-    parser.add_argument("--output_dir", type=str, default="results/3dsrbench")
-    parser.add_argument("--device_map", type=str, default=None)
+    parser.add_argument("--output_dir", type=str, default="results/spatio/mmsi_bench")
+    parser.add_argument("--device_map", type=str, default=None, help="Comma-separated GPU IDs, e.g. 1,3,4,5,6")
     parser.add_argument("--seed", type=int, default=42)
     args = parser.parse_args()
 
@@ -67,11 +50,18 @@ def main():
 
     device_map = {}
     if args.device_map:
-        raw = [d.strip() for d in args.device_map.split(",")]
-        devices = [f"cuda:{d}" if d.isdigit() else d for d in raw]
+        devices = [d.strip() for d in args.device_map.split(",")]
+        # Format as cuda:N for each device
+        device_ids = []
+        for d in devices:
+            try:
+                n = int(d)
+                device_ids.append(f"cuda:{n}")
+            except ValueError:
+                device_ids.append(d)
         models = [HEAD_AGENT_MODEL, REASONING_AGENT_MODEL] + SPECIALIST_LLMS
         for i, m in enumerate(models):
-            device_map[m] = devices[i % len(devices)]
+            device_map[m] = device_ids[i % len(device_ids)]
 
     score_map = ScoreMap(categories=ALL_CATEGORIES)
     trust_state = {} if update_trust else None
@@ -137,26 +127,26 @@ def main():
             N_c_per_category=N_c_per_category,
             update_trust=update_trust,
             use_beta_weights=True,
-            parallel_specialists=bool(args.parallel_specialists),
-            final_aggregator=args.final_aggregator,
-            use_delta_penalty=(not bool(args.no_delta_penalty)),
-            no_short_term_ema=bool(args.no_short_term_ema),
-            no_long_term_ema=bool(args.no_long_term_ema),
-            top_k=int(args.top_k),
-            beta=float(args.beta) if args.beta is not None else float(DEFAULT_BETA),
-            role_assignment=str(args.role_assignment),
         )
 
         total += 1
         if result.get("correct"):
             correct_count += 1
         N_c_per_category[result["category"]] = N_c_per_category.get(result["category"], 0) + 1
-        results.append({"step": step, "final": result["final_answer"], "gt": gt, "correct": result.get("correct")})
+        r = {"step": step, "final": result["final_answer"], "gt": gt, "correct": result.get("correct"), "category": result["category"]}
+        qt = get_benchmark_category(ex, BENCHMARK)
+        if qt is not None:
+            r["question_type"] = qt
+        if "timing" in result:
+            r["timing"] = result["timing"]
+        if "assignments" in result:
+            r["assignments"] = result["assignments"]
+        results.append(r)
 
         logger.info("Step %d | cat=%s | final=%s | gt=%s | ok=%s", step, result["category"], result["final_answer"], gt, result.get("correct"))
 
     acc = 100.0 * correct_count / total if total > 0 else 0.0
-    logger.info("3DSRBench Accuracy: %.2f%% (%d/%d)", acc, correct_count, total)
+    logger.info("MMSI-Bench Accuracy: %.2f%% (%d/%d)", acc, correct_count, total)
 
     summary = {
         "benchmark": BENCHMARK,
@@ -166,14 +156,8 @@ def main():
         "correct": correct_count,
         "accuracy": acc,
         "train": update_trust,
-        "final_aggregator": args.final_aggregator,
-        "no_short_term_ema": bool(args.no_short_term_ema),
-        "no_long_term_ema": bool(args.no_long_term_ema),
-        "no_delta_penalty": bool(args.no_delta_penalty),
-        "top_k": int(args.top_k),
-        "beta": float(args.beta) if args.beta is not None else float(DEFAULT_BETA),
-        "role_assignment": str(args.role_assignment),
         "seed": args.seed,
+        "device_map": args.device_map,
         "timestamp": datetime.now().isoformat(),
     }
     (output_dir / "summary.json").write_text(json.dumps(summary, indent=2))

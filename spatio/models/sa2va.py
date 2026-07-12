@@ -1,5 +1,5 @@
 """Sa2VA model (ByteDance/Sa2VA-4B)."""
-from models._backend_sa2va import Sa2VARunner as _Sa2VARunner
+from spatio.models._backend_sa2va import Sa2VARunner as _Sa2VARunner
 
 
 class Sa2VARunner:

@@ -8,7 +8,7 @@ import random
 
 from PIL import Image
 
-from config import (
+from spatio.config import (
     ALL_CATEGORIES,
     CATEGORY_DESCRIPTIONS,
     ROLES,
@@ -20,10 +20,10 @@ from config import (
     LAMBDA_G,
     MU,
 )
-from prompts import build_head_agent_prompt, build_role_prompt, build_final_reasoning_prompt
-from score_map import ScoreMap
-from shared_memory import SharedMemory
-from trust_score import (
+from spatio.prompts import build_head_agent_prompt, build_role_prompt, build_final_reasoning_prompt
+from spatio.score_map import ScoreMap
+from spatio.shared_memory import SharedMemory
+from spatio.trust_score import (
     compute_weights_for_entries,
     run_step4,
     get_scores_from_state,
@@ -31,7 +31,7 @@ from trust_score import (
     TrustState,
 )
 
-from config import ROLES_WITH_TOOLS, ROLE_TO_TOOL
+from spatio.config import ROLES_WITH_TOOLS, ROLE_TO_TOOL
 logger = logging.getLogger(__name__)
 
 
@@ -101,7 +101,7 @@ def parse_final_answer(raw: str, answer_type: str = "multiple_choice") -> str:
 
 
 def _is_correct(pred: str, gt: str, answer_type: str) -> bool:
-    from trust_score import similarity_answer
+    from spatio.trust_score import similarity_answer
     return similarity_answer(pred, gt) >= 0.99
 
 
@@ -165,7 +165,7 @@ def run_step(
 
     # 2. Agent selection
     role_assignment = (role_assignment or "default").strip().lower()
-    from config import SPECIALIST_LLMS as _active_specialists
+    from spatio.config import SPECIALIST_LLMS as _active_specialists
 
     # Candidate pool for this step (Top-k).
     pool_all = list(_active_specialists)
@@ -230,7 +230,7 @@ def run_step(
     for role, _llm in assignments:
         if role in ROLES_WITH_TOOLS and role not in tool_output_cache:
             try:
-                from tools import get_3d_representation, get_scene_graph  # type: ignore
+                from spatio.tools import get_3d_representation, get_scene_graph  # type: ignore
                 tool_kind = (ROLE_TO_TOOL or {}).get(role, "none")
                 if tool_kind == "3d_representation":
                     tool_output_cache[role] = get_3d_representation(image)

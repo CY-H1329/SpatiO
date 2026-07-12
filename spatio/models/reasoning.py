@@ -14,7 +14,7 @@ import logging
 import os
 import warnings
 
-from models._backend_qwen3 import Qwen3Runner
+from spatio.models._backend_qwen3 import Qwen3Runner
 
 logger = logging.getLogger(__name__)
 

@@ -1,15 +1,17 @@
 #!/usr/bin/env python3
+import sys
+from pathlib import Path
+_ROOT = Path(__file__).resolve().parents[1]
+if str(_ROOT) not in sys.path:
+    sys.path.insert(0, str(_ROOT))
+
 import argparse
 import json
 import logging
-import sys
 from datetime import datetime
-from pathlib import Path
 from typing import Dict, Optional
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
-
-from config import (
+from spatio.config import (
     ALL_CATEGORIES,
     SPECIALIST_LLMS,
     HEAD_AGENT_MODEL,
@@ -17,37 +19,19 @@ from config import (
     BETA as DEFAULT_BETA,
     TOP_K_SPECIALISTS,
 )
-from score_map import ScoreMap
-from pipeline import run_step
-from core import get_runner
-from benchmarks import load_benchmark, get_benchmark_image, get_benchmark_prompt, get_benchmark_answer
+from spatio.score_map import ScoreMap
+from spatio.pipeline import run_step
+from spatio.core import get_runner
+from spatio.benchmarks import load_benchmark, get_benchmark_image, get_benchmark_prompt, get_benchmark_answer
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger(__name__)
 
-BENCHMARK = "cvbench"
-
-
-def _parse_fixed_role_map(s: Optional[str]) -> Optional[Dict[str, str]]:
-    if not s:
-        return None
-    out: Dict[str, str] = {}
-    for part in str(s).split(","):
-        part = part.strip()
-        if not part:
-            continue
-        if "=" not in part:
-            raise ValueError(f"--fixed_role_map invalide (attendu role=model): {part!r}")
-        role, model = part.split("=", 1)
-        role, model = role.strip(), model.strip()
-        if not role or not model:
-            raise ValueError(f"--fixed_role_map invalide (role/model vides): {part!r}")
-        out[role] = model
-    return out or None
+BENCHMARK = "3dsrbench"
 
 
 def main():
-    parser = argparse.ArgumentParser(description="SpatiO — CV-Bench")
+    parser = argparse.ArgumentParser(description="SpatiO — 3DSRBench")
     parser.add_argument("--max_samples", type=int, default=50)
     parser.add_argument("--full", action="store_true")
     parser.add_argument("--train", action="store_true")
@@ -59,44 +43,30 @@ def main():
         default=TOP_K_SPECIALISTS,
         help="Top-k specialist candidates (default: full pool of 5).",
     )
-    parser.add_argument("--beta", type=float, default=None, help="Beta softmax des poids TTO (défaut: config.BETA).")
+    parser.add_argument("--beta", type=float, default=None, help="Hyperparam: beta pour softmax des poids (ex: 1,3,5,10,20).")
     parser.add_argument(
         "--role_assignment",
         type=str,
         default="default",
         choices=["default", "fixed", "random"],
-        help="Assignation des rôles: default (trust/TTO), fixed, random.",
-    )
-    parser.add_argument(
-        "--fixed_role_map",
-        type=str,
-        default=None,
-        help='Si --role_assignment fixed : "role=model,role=model".',
+        help="Règle d'assignation des rôles: default(trust-based), fixed, random.",
     )
     parser.add_argument(
         "--final_aggregator",
         type=str,
         default="reasoner",
         choices=["reasoner", "majority", "weighted"],
-        help="Agrégation finale: reasoner (défaut), majority, weighted.",
+        help="Ablation: remplace le Reasoner final par un vote (majority / weighted par poids TTO).",
     )
-    parser.add_argument("--no_short_term_ema", action="store_true", help="Ablation: lambda_f=0.")
-    parser.add_argument("--no_long_term_ema", action="store_true", help="Ablation: lambda_g=0.")
-    parser.add_argument("--no_delta_penalty", action="store_true", help="Ablation: sans pénalité delta_i.")
-    parser.add_argument(
-        "--uniform_role_weights",
-        action="store_true",
-        help="Poids affichés / raisonnement uniformes (w=0.5) : désactive les poids beta TTO dans le prompt final.",
-    )
-    parser.add_argument("--output_dir", type=str, default="results/cvbench")
+    parser.add_argument("--no_short_term_ema", action="store_true", help="Ablation: désactive l'EMA court-terme (lambda_f=0).")
+    parser.add_argument("--no_long_term_ema", action="store_true", help="Ablation: désactive l'EMA long-terme (lambda_g=0).")
+    parser.add_argument("--no_delta_penalty", action="store_true", help="Ablation: retire la pénalité delta_i dans la reward.")
+    parser.add_argument("--output_dir", type=str, default="results/3dsrbench")
     parser.add_argument("--device_map", type=str, default=None)
     parser.add_argument("--seed", type=int, default=42)
     args = parser.parse_args()
 
     update_trust = args.train and not args.test_only
-    fixed_role_map = _parse_fixed_role_map(args.fixed_role_map)
-    use_beta_weights = not bool(args.uniform_role_weights)
-    beta = float(args.beta) if args.beta is not None else float(DEFAULT_BETA)
 
     device_map = {}
     if args.device_map:
@@ -147,15 +117,6 @@ def main():
     output_dir = Path(args.output_dir) / suffix
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    # Évite from_pretrained / .to(cuda) concurrents sur Sa2VA ou Qwen3 (meta tensor).
-    if args.parallel_specialists:
-        logger.info("Pré-chargement des spécialistes sur le thread principal (%d).", len(SPECIALIST_LLMS))
-        for name in list(SPECIALIST_LLMS):
-            if runners.get(name) is None:
-                r = get_runner(name, device=device_map.get(name, "cuda:0"))
-                r.load()
-                runners[name] = r
-
     for step in range(len(ds)):
         ex = ds[step]
         image = get_benchmark_image(ex, BENCHMARK)
@@ -178,16 +139,15 @@ def main():
             reasoning_generate=_reason_gen,
             N_c_per_category=N_c_per_category,
             update_trust=update_trust,
-            use_beta_weights=use_beta_weights,
+            use_beta_weights=True,
             parallel_specialists=bool(args.parallel_specialists),
             final_aggregator=args.final_aggregator,
             use_delta_penalty=(not bool(args.no_delta_penalty)),
             no_short_term_ema=bool(args.no_short_term_ema),
             no_long_term_ema=bool(args.no_long_term_ema),
             top_k=int(args.top_k),
-            beta=beta,
+            beta=float(args.beta) if args.beta is not None else float(DEFAULT_BETA),
             role_assignment=str(args.role_assignment),
-            fixed_role_map=fixed_role_map,
         )
 
         total += 1
@@ -199,7 +159,7 @@ def main():
         logger.info("Step %d | cat=%s | final=%s | gt=%s | ok=%s", step, result["category"], result["final_answer"], gt, result.get("correct"))
 
     acc = 100.0 * correct_count / total if total > 0 else 0.0
-    logger.info("CV-Bench Accuracy: %.2f%% (%d/%d)", acc, correct_count, total)
+    logger.info("3DSRBench Accuracy: %.2f%% (%d/%d)", acc, correct_count, total)
 
     summary = {
         "benchmark": BENCHMARK,
@@ -209,14 +169,12 @@ def main():
         "correct": correct_count,
         "accuracy": acc,
         "train": update_trust,
-        "uniform_role_weights": bool(args.uniform_role_weights),
         "final_aggregator": args.final_aggregator,
         "no_short_term_ema": bool(args.no_short_term_ema),
         "no_long_term_ema": bool(args.no_long_term_ema),
         "no_delta_penalty": bool(args.no_delta_penalty),
-        "parallel_specialists": bool(args.parallel_specialists),
         "top_k": int(args.top_k),
-        "beta": beta,
+        "beta": float(args.beta) if args.beta is not None else float(DEFAULT_BETA),
         "role_assignment": str(args.role_assignment),
         "seed": args.seed,
         "timestamp": datetime.now().isoformat(),

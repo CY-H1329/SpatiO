@@ -4,7 +4,7 @@ import re
 from dataclasses import dataclass
 from typing import Callable, Dict, List, Optional
 
-from config import ROLES, KAPPA, MU, GAMMA, LAMBDA_F, LAMBDA_G, RAMP_TEMP, BETA
+from spatio.config import ROLES, KAPPA, MU, GAMMA, LAMBDA_F, LAMBDA_G, RAMP_TEMP, BETA
 
 
 def select_agents_by_score(

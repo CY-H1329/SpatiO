@@ -1,5 +1,5 @@
 """SpatialReasoner (ccvl/SpatialReasoner on Hugging Face)."""
-from models._backend_spatial_reasoner import SpatialReasonerRunner as _SpatialReasonerRunner
+from spatio.models._backend_spatial_reasoner import SpatialReasonerRunner as _SpatialReasonerRunner
 
 
 class SpatialReasonerRunner:

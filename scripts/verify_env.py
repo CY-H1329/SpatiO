@@ -7,7 +7,8 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT))
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 os.chdir(ROOT)
 
 
@@ -46,11 +47,11 @@ def main() -> None:
     except Exception as e:
         _fail(f"Qwen3-VL import failed: {e}")
 
-    if not (ROOT / "models" / "_backend_qwen3.py").is_file():
-        _fail("missing models/_backend_qwen3.py")
+    if not (ROOT / "spatio" / "models" / "_backend_qwen3.py").is_file():
+        _fail("missing spatio/models/_backend_qwen3.py")
     print("backends: OK")
 
-    from config import SPECIALIST_LLMS, TOP_K_SPECIALISTS
+    from spatio.config import SPECIALIST_LLMS, TOP_K_SPECIALISTS
 
     print("specialists (%d):" % len(SPECIALIST_LLMS), ", ".join(SPECIALIST_LLMS))
     print("top_k:", TOP_K_SPECIALISTS)
@@ -63,7 +64,7 @@ def main() -> None:
     else:
         _warn("set SPATIALRGPT_PATH to the SpatialRGPT clone for spatial_rgpt")
 
-    print("\nNOTE: official Reasoning Agent ships later; interim stand-in in models/reasoning.py")
+    print("\nNOTE: official Reasoning Agent ships later; interim stand-in in spatio/models/reasoning.py")
     print("OK — env looks usable.\n")
 
 

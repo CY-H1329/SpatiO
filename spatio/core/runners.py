@@ -11,7 +11,7 @@ class LLaVA4DRunner(BaseRunner):
 
     def load(self) -> None:
         try:
-            from models.llava4d import LLaVA4DModel  # type: ignore
+            from spatio.models.llava4d import LLaVA4DModel  # type: ignore
             self._model = LLaVA4DModel(device=self.device)
         except ImportError:
             self._model = None
@@ -28,7 +28,7 @@ class Qwen3Runner(BaseRunner):
 
     def load(self) -> None:
         try:
-            from models.qwen3 import Qwen3Runner as Q3R  # type: ignore
+            from spatio.models.qwen3 import Qwen3Runner as Q3R  # type: ignore
             self._model = Q3R(model_id=self.model_name, device=self.device)
         except ImportError:
             self._model = None
@@ -45,7 +45,7 @@ class SpatialRGPTRunner(BaseRunner):
 
     def load(self) -> None:
         try:
-            from models.spatial_rgpt import SpatialRGPTRunner as SRRunner  # type: ignore
+            from spatio.models.spatial_rgpt import SpatialRGPTRunner as SRRunner  # type: ignore
             self._model = SRRunner(device=self.device)
         except ImportError as e:
             # Éviter les runs "silencieux" (pred="") qui donnent accuracy=0 et tokens=0.
@@ -69,7 +69,7 @@ class SpatialReasonerRunner(BaseRunner):
 
     def load(self) -> None:
         try:
-            from models.spatial_reasoner import SpatialReasonerRunner as SRRunner  # type: ignore
+            from spatio.models.spatial_reasoner import SpatialReasonerRunner as SRRunner  # type: ignore
             self._model = SRRunner(device=self.device)
         except ImportError:
             self._model = None
@@ -86,7 +86,7 @@ class Sa2VARunner(BaseRunner):
 
     def load(self) -> None:
         try:
-            from models.sa2va import Sa2VARunner as S2VRunner  # type: ignore
+            from spatio.models.sa2va import Sa2VARunner as S2VRunner  # type: ignore
             self._model = S2VRunner(device=self.device)
         except ImportError:
             self._model = None
@@ -103,11 +103,11 @@ class ReasoningRunner(BaseRunner):
 
     def load(self) -> None:
         try:
-            from models.reasoning import ReasoningModel  # type: ignore
+            from spatio.models.reasoning import ReasoningModel  # type: ignore
             self._model = ReasoningModel(model_id=self.model_name, device=self.device)
         except ImportError:
             try:
-                from models.qwen3 import Qwen3Runner  # type: ignore
+                from spatio.models.qwen3 import Qwen3Runner  # type: ignore
                 self._model = Qwen3Runner(
                     model_id="Qwen/Qwen3-VL-8B-Instruct" if "8b" in str(self.model_name).lower() else "Qwen/Qwen3-VL-4B-Instruct",
                     device=self.device,

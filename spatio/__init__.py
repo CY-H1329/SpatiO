@@ -1,0 +1,1 @@
+"""SpatiO core package."""

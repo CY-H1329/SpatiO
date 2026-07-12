@@ -5,14 +5,15 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT))
+_ROOT = Path(__file__).resolve().parents[1]
+if str(_ROOT) not in sys.path:
+    sys.path.insert(0, str(_ROOT))
 
 from PIL import Image
 
-from config import ALL_CATEGORIES
-from pipeline import run_step
-from score_map import ScoreMap
+from spatio.config import ALL_CATEGORIES
+from spatio.pipeline import run_step
+from spatio.score_map import ScoreMap
 
 
 def _head(_img, _prompt: str) -> str:

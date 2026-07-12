@@ -6,10 +6,12 @@ import argparse
 import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT))
+_ROOT = Path(__file__).resolve().parents[1]
+if str(_ROOT) not in sys.path:
+    sys.path.insert(0, str(_ROOT))
 
-from benchmarks import get_benchmark_answer, get_benchmark_image, get_benchmark_prompt, load_benchmark
+
+from spatio.benchmarks import get_benchmark_answer, get_benchmark_image, get_benchmark_prompt, load_benchmark
 
 
 def main() -> None:

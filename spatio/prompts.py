@@ -1,6 +1,6 @@
 from typing import Dict, List, Optional
 
-from roles.registry import load_role_set, read_role_prompt  # type: ignore
+from spatio.roles.registry import load_role_set, read_role_prompt  # type: ignore
 
 
 def build_head_agent_prompt(

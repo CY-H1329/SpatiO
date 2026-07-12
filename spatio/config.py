@@ -31,7 +31,7 @@ TOP_K_SPECIALISTS = int(os.environ.get("SPATIO_TOP_K", str(len(SPECIALIST_LLMS))
 
 _ROLE_SET_ID = os.environ.get("SPATIO_ROLE_SET", "").strip() or "human_v0"
 try:
-    from roles.registry import load_role_set  # type: ignore
+    from spatio.roles.registry import load_role_set  # type: ignore
 
     _rs = load_role_set(_ROLE_SET_ID)
     ROLES = _rs.role_ids

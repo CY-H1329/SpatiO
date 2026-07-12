@@ -1,18 +1,21 @@
 #!/usr/bin/env python3
+import sys
+from pathlib import Path
+_ROOT = Path(__file__).resolve().parents[1]
+if str(_ROOT) not in sys.path:
+    sys.path.insert(0, str(_ROOT))
+
 import argparse
 import json
 import logging
-import sys
 from datetime import datetime
-from pathlib import Path
+from typing import Dict, Optional
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
-
-from config import ALL_CATEGORIES, SPECIALIST_LLMS, HEAD_AGENT_MODEL, REASONING_AGENT_MODEL
-from score_map import ScoreMap
-from pipeline import run_step
-from core import get_runner
-from benchmarks import load_benchmark, get_benchmark_image, get_benchmark_prompt, get_benchmark_answer
+from spatio.config import ALL_CATEGORIES, SPECIALIST_LLMS, HEAD_AGENT_MODEL, REASONING_AGENT_MODEL
+from spatio.score_map import ScoreMap
+from spatio.pipeline import run_step
+from spatio.core import get_runner
+from spatio.benchmarks import load_benchmark, get_benchmark_image, get_benchmark_prompt, get_benchmark_answer
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger(__name__)

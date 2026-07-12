@@ -1,5 +1,5 @@
 """LLaVA-1.5-7B proxy for the historical llava4d slot."""
-from models._backend_llava import LLaVARunner
+from spatio.models._backend_llava import LLaVARunner
 
 
 class LLaVA4DModel:

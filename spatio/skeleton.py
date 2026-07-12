@@ -1,6 +1,6 @@
 """Print Head + 5 specialists + Reasoning layout (no GPU)."""
 
-from config import (
+from spatio.config import (
     ALL_CATEGORIES,
     BETA,
     GAMMA,

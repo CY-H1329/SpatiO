@@ -1,5 +1,5 @@
 """Qwen3-VL model (Hugging Face)."""
-from models._backend_qwen3 import Qwen3Runner as _Qwen3Runner
+from spatio.models._backend_qwen3 import Qwen3Runner as _Qwen3Runner
 
 MODEL_ID_MAP = {
     "qwen3_4b": "Qwen/Qwen3-VL-4B-Instruct",

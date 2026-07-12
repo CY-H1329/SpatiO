@@ -4,7 +4,7 @@ import random
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
-from config import SPECIALIST_LLMS, ROLES, INITIAL_SCORE
+from spatio.config import SPECIALIST_LLMS, ROLES, INITIAL_SCORE
 
 
 class ScoreMap:
@@ -35,7 +35,7 @@ class ScoreMap:
 
         # N'utiliser que les spécialistes actifs (config / SPATIO_SPECIALIST_LLMS) : une carte sauvegardée
         # peut encore lister p.ex. llava4d alors qu'on l'a retiré pour éviter les crashs LLaVA.
-        from config import SPECIALIST_LLMS as _active
+        from spatio.config import SPECIALIST_LLMS as _active
 
         pool = [x for x in self.llms if x in _active]
         if not pool:

@@ -1,5 +1,5 @@
 """SpatialRGPT — requires SPATIALRGPT_PATH (official repo clone)."""
-from models._backend_spatial_rgpt import SpatialRGPTRunner as _SpatialRGPTRunner
+from spatio.models._backend_spatial_rgpt import SpatialRGPTRunner as _SpatialRGPTRunner
 
 
 class SpatialRGPTRunner:
